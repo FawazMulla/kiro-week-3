@@ -115,6 +115,7 @@ export class Cache {
   clearStaleEntries() {
     try {
       const keysToRemove = [];
+      const cacheKeys = [];
       
       // Iterate through all localStorage keys
       for (let i = 0; i < localStorage.length; i++) {
@@ -127,8 +128,10 @@ export class Cache {
 
           const entry = JSON.parse(item);
           
-          // Check if this looks like a cache entry and if it's expired
+          // Check if this looks like a cache entry
           if (entry && entry.timestamp && entry.expiresIn) {
+            cacheKeys.push({ key, entry, size: item.length });
+            
             if (!this.isValid(entry)) {
               keysToRemove.push(key);
             }
@@ -142,9 +145,66 @@ export class Cache {
       // Remove all stale entries
       keysToRemove.forEach(key => localStorage.removeItem(key));
       
-      console.log(`Cleared ${keysToRemove.length} stale cache entries`);
+      // If we still need more space, remove oldest entries
+      if (keysToRemove.length === 0 && cacheKeys.length > 0) {
+        // Sort by timestamp (oldest first)
+        cacheKeys.sort((a, b) => a.entry.timestamp - b.entry.timestamp);
+        
+        // Remove oldest 25% of cache entries
+        const toRemove = Math.ceil(cacheKeys.length * 0.25);
+        for (let i = 0; i < toRemove; i++) {
+          localStorage.removeItem(cacheKeys[i].key);
+          keysToRemove.push(cacheKeys[i].key);
+        }
+      }
+      
+      console.log(`Cleared ${keysToRemove.length} cache entries (${keysToRemove.length - (keysToRemove.length - cacheKeys.length)} stale, ${keysToRemove.length - cacheKeys.length} oldest)`);
     } catch (error) {
       console.error('Error clearing stale entries:', error);
+    }
+  }
+
+  /**
+   * Get cache usage statistics
+   * @returns {Object} Cache statistics
+   */
+  getStats() {
+    try {
+      let totalSize = 0;
+      let cacheEntries = 0;
+      let expiredEntries = 0;
+      
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key) continue;
+        
+        const item = localStorage.getItem(key);
+        if (!item) continue;
+        
+        totalSize += item.length;
+        
+        try {
+          const entry = JSON.parse(item);
+          if (entry && entry.timestamp && entry.expiresIn) {
+            cacheEntries++;
+            if (!this.isValid(entry)) {
+              expiredEntries++;
+            }
+          }
+        } catch (parseError) {
+          // Not a cache entry
+        }
+      }
+      
+      return {
+        totalSize,
+        cacheEntries,
+        expiredEntries,
+        estimatedQuotaUsage: (totalSize / (5 * 1024 * 1024)) * 100 // Assume 5MB quota
+      };
+    } catch (error) {
+      console.error('Error getting cache stats:', error);
+      return { totalSize: 0, cacheEntries: 0, expiredEntries: 0, estimatedQuotaUsage: 0 };
     }
   }
 

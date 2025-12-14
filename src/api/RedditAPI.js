@@ -6,7 +6,10 @@
 export class RedditAPI {
   constructor(subreddits = ['IndianDankMemes', 'indiameme', 'SaimanSays']) {
     this.subreddits = subreddits;
-    this.baseUrl = 'https://www.reddit.com/r';
+    // Use proxy in development, direct API in production
+    this.baseUrl = import.meta.env.DEV 
+      ? '/api/reddit/r'
+      : 'https://www.reddit.com/r';
     this.maxRetries = 3;
     this.retryDelay = 1000; // Initial delay in ms
   }
@@ -56,31 +59,76 @@ export class RedditAPI {
    */
   async _fetchWithRetry(url, subreddit, attempt = 1) {
     try {
+      console.log(`Fetching Reddit data from r/${subreddit} (attempt ${attempt}):`, url);
+      
       const response = await fetch(url, {
+        method: 'GET',
         headers: {
-          'User-Agent': 'MemeMarketDashboard/1.0'
-        }
+          'User-Agent': 'MemeMarketDashboard/1.0 (by /u/developer)',
+          'Accept': 'application/json, text/plain, */*',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        },
+        mode: 'cors',
+        credentials: 'omit'
       });
+      
+      console.log(`Reddit API response status for r/${subreddit}: ${response.status}`);
       
       if (response.status === 429) {
         // Rate limiting
-        throw new Error('Rate limited by Reddit API');
+        const retryAfter = response.headers.get('Retry-After') || '60';
+        throw new Error(`Rate limited by Reddit API. Retry after ${retryAfter} seconds.`);
+      }
+      
+      if (response.status === 403) {
+        throw new Error(`Access forbidden to r/${subreddit}. Subreddit may be private or banned.`);
+      }
+      
+      if (response.status === 404) {
+        throw new Error(`Subreddit r/${subreddit} not found.`);
       }
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`);
       }
       
       const data = await response.json();
-      return this.parseRedditResponse(data, subreddit);
+      console.log(`Reddit API response received for r/${subreddit}, parsing...`);
+      
+      const parsedData = this.parseRedditResponse(data, subreddit);
+      console.log(`Successfully parsed ${parsedData.length} posts from r/${subreddit}`);
+      
+      return parsedData;
     } catch (error) {
+      console.error(`Reddit API fetch attempt ${attempt} failed for r/${subreddit}:`, error);
+      
       if (attempt >= this.maxRetries) {
-        console.warn(`Failed to fetch from r/${subreddit} after ${this.maxRetries} attempts: ${error.message}`);
+        // Provide more specific error messages but still return empty array for graceful degradation
+        let userMessage = `Failed to fetch from r/${subreddit}`;
+        
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+          userMessage = `Network error while fetching r/${subreddit}. Please check your connection.`;
+        } else if (error.message.includes('429') || error.message.includes('rate limit')) {
+          userMessage = `Rate limited by Reddit for r/${subreddit}. Please wait before retrying.`;
+        } else if (error.message.includes('403') || error.message.includes('forbidden')) {
+          userMessage = `Access denied to r/${subreddit}. Subreddit may be private.`;
+        } else if (error.message.includes('404') || error.message.includes('not found')) {
+          userMessage = `Subreddit r/${subreddit} not found.`;
+        } else if (error.message.includes('timeout')) {
+          userMessage = `Request to r/${subreddit} timed out. The server may be busy.`;
+        } else if (error.message.includes('CORS')) {
+          userMessage = `Cross-origin request blocked for r/${subreddit}. Please try refreshing the page.`;
+        }
+        
+        console.warn(`${userMessage} after ${this.maxRetries} attempts: ${error.message}`);
         return []; // Return empty array instead of throwing to allow other subreddits to succeed
       }
       
       // Exponential backoff: 1s, 2s, 4s
       const delay = this.retryDelay * Math.pow(2, attempt - 1);
+      console.log(`Retrying r/${subreddit} in ${delay}ms...`);
       await new Promise(resolve => setTimeout(resolve, delay));
       
       return this._fetchWithRetry(url, subreddit, attempt + 1);

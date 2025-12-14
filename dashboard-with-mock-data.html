@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard with Mock Data</title>
+    <link rel="stylesheet" href="./src/style.css">
+</head>
+<body class="bg-slate-900 text-slate-50">
+    <div id="app" class="min-h-screen bg-slate-900 text-slate-100">
+        <!-- Dashboard will be rendered here -->
+    </div>
+    
+    <script type="module">
+        import { Dashboard } from './src/components/Dashboard.js';
+        import { ToastNotification } from './src/components/ToastNotification.js';
+        
+        // Initialize global toast notification system
+        window.toastNotification = new ToastNotification();
+        
+        // Create mock data
+        function createMockStockData() {
+            const data = [];
+            const basePrice = 24000;
+            const now = new Date();
+            
+            for (let i = 29; i >= 0; i--) {
+                const date = new Date(now.getTime() - (i * 24 * 60 * 60 * 1000));
+                const variation = (Math.random() - 0.5) * 1000; // ±500 points
+                const open = basePrice + variation;
+                const close = open + (Math.random() - 0.5) * 200; // ±100 points
+                const high = Math.max(open, close) + Math.random() * 100;
+                const low = Math.min(open, close) - Math.random() * 100;
+                const volume = 1000000 + Math.random() * 2000000;
+                
+                data.push({ date, open, high, low, close, volume });
+            }
+            
+            return data;
+        }
+        
+        function createMockMemeData() {
+            const titles = [
+                "When you realize it's Monday again 😭",
+                "POV: You're trying to explain crypto to your parents",
+                "Me after checking my portfolio",
+                "That feeling when NIFTY goes brrrr 🚀",
+                "Retail investors vs Market makers",
+                "When someone asks about my trading strategy",
+                "Market crash? What market crash? 📈",
+                "Diamond hands vs Paper hands",
+                "Me buying the dip for the 10th time",
+                "When your stop loss triggers at the bottom"
+            ];
+            
+            const subreddits = ['IndianDankMemes', 'indiameme', 'SaimanSays'];
+            const data = [];
+            const now = new Date();
+            
+            for (let i = 0; i < 25; i++) {
+                const daysAgo = Math.floor(Math.random() * 7);
+                const date = new Date(now.getTime() - (daysAgo * 24 * 60 * 60 * 1000));
+                
+                data.push({
+                    title: titles[Math.floor(Math.random() * titles.length)],
+                    score: Math.floor(Math.random() * 5000) + 100,
+                    comments: Math.floor(Math.random() * 500) + 10,
+                    created: date,
+                    url: `https://reddit.com/r/test/post${i}`,
+                    subreddit: subreddits[Math.floor(Math.random() * subreddits.length)],
+                    thumbnail: '',
+                    author: `user${i}`
+                });
+            }
+            
+            return data.sort((a, b) => b.score - a.score);
+        }
+        
+        async function initDashboardWithMockData() {
+            try {
+                console.log('Starting dashboard with mock data...');
+                
+                const app = document.querySelector('#app');
+                const dashboard = new Dashboard(app);
+                
+                // Override the _fetchAllData method to return mock data
+                dashboard._fetchAllData = async (timeRange) => {
+                    console.log(`Fetching mock data for ${timeRange} days...`);
+                    
+                    // Simulate network delay
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    
+                    const stockData = createMockStockData();
+                    const memeData = createMockMemeData();
+                    
+                    console.log(`Mock data created: ${stockData.length} stock points, ${memeData.length} memes`);
+                    
+                    return { stockData, memeData };
+                };
+                
+                // Initialize dashboard
+                await dashboard.initialize();
+                
+                console.log('Dashboard with mock data initialized successfully!');
+                window.toastNotification.showSuccess('Dashboard loaded with sample data!');
+                
+            } catch (error) {
+                console.error('Dashboard initialization failed:', error);
+                
+                const app = document.querySelector('#app');
+                app.innerHTML = `
+                    <div class="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center">
+                        <div class="text-center max-w-2xl mx-auto px-4">
+                            <h1 class="text-3xl font-bold text-red-400 mb-4">Dashboard Failed</h1>
+                            <p class="text-slate-300 mb-6">${error.message}</p>
+                            <button onclick="location.reload()" class="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg">
+                                Retry
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
+        // Start initialization
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initDashboardWithMockData);
+        } else {
+            initDashboardWithMockData();
+        }
+    </script>
+</body>
+</html>

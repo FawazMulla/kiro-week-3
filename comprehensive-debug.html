@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comprehensive Debug</title>
+    <link rel="stylesheet" href="./src/style.css">
+    <style>
+        .debug-panel { 
+            position: fixed; 
+            top: 10px; 
+            right: 10px; 
+            width: 300px; 
+            background: #1e293b; 
+            border: 1px solid #475569; 
+            padding: 10px; 
+            font-size: 12px; 
+            max-height: 80vh; 
+            overflow-y: auto; 
+            z-index: 1000;
+        }
+        .debug-item { padding: 5px; margin: 2px 0; border-radius: 3px; }
+        .success { background: #065f46; }
+        .error { background: #7f1d1d; }
+        .info { background: #1e40af; }
+        .warning { background: #92400e; }
+    </style>
+</head>
+<body>
+    <div id="debug-panel" class="debug-panel">
+        <h3>Debug Log</h3>
+        <div id="debug-log"></div>
+    </div>
+    
+    <div id="app"></div>
+    
+    <script type="module">
+        const debugLog = document.getElementById('debug-log');
+        
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `debug-item ${type}`;
+            div.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            debugLog.appendChild(div);
+            console.log(`[${type.toUpperCase()}] ${message}`);
+            debugLog.scrollTop = debugLog.scrollHeight;
+        }
+        
+        async function comprehensiveTest() {
+            try {
+                log('Starting comprehensive debug test', 'info');
+                
+                // Test 1: Environment
+                log(`Environment: ${import.meta.env.DEV ? 'Development' : 'Production'}`, 'info');
+                log(`Base URL: ${window.location.origin}`, 'info');
+                
+                // Test 2: API Imports
+                log('Testing API imports...', 'info');
+                const { StockAPI } = await import('./src/api/StockAPI.js');
+                const { RedditAPI } = await import('./src/api/RedditAPI.js');
+                log('✅ API imports successful', 'success');
+                
+                // Test 3: API Instances
+                log('Creating API instances...', 'info');
+                const stockAPI = new StockAPI();
+                const redditAPI = new RedditAPI();
+                log(`Stock API URL: ${stockAPI.baseUrl}`, 'info');
+                log(`Reddit API URL: ${redditAPI.baseUrl}`, 'info');
+                
+                // Test 4: Proxy Test
+                log('Testing proxy endpoints...', 'info');
+                try {
+                    const proxyTest = await fetch('/api/yahoo/v8/finance/chart/^NSEI?period1=1765000000&period2=1765723000&interval=1d');
+                    log(`Proxy test: ${proxyTest.status} ${proxyTest.statusText}`, proxyTest.ok ? 'success' : 'error');
+                } catch (proxyError) {
+                    log(`Proxy test failed: ${proxyError.message}`, 'error');
+                }
+                
+                // Test 5: Component Imports
+                log('Testing component imports...', 'info');
+                const { Dashboard } = await import('./src/components/Dashboard.js');
+                const { StockPanel } = await import('./src/components/StockPanel.js');
+                const { MemePanel } = await import('./src/components/MemePanel.js');
+                log('✅ Component imports successful', 'success');
+                
+                // Test 6: Dashboard Creation
+                log('Creating dashboard instance...', 'info');
+                const app = document.querySelector('#app');
+                const dashboard = new Dashboard(app);
+                log('✅ Dashboard instance created', 'success');
+                
+                // Test 7: Dashboard Initialization
+                log('Initializing dashboard...', 'info');
+                await dashboard.initialize();
+                log('✅ Dashboard initialized', 'success');
+                
+                // Test 8: Data Loading
+                log('Loading data...', 'info');
+                await dashboard.loadData(7); // Load 7 days of data
+                log('✅ Data loading completed', 'success');
+                
+                // Test 9: Check Data
+                log(`Stock data points: ${dashboard.stockData.length}`, 'info');
+                log(`Meme data points: ${dashboard.memeData.length}`, 'info');
+                log(`Volatility data points: ${dashboard.volatilityData.length}`, 'info');
+                log(`Popularity data points: ${dashboard.popularityData.length}`, 'info');
+                
+                if (dashboard.correlationResult) {
+                    log(`Correlation: ${dashboard.correlationResult.coefficient.toFixed(3)} (${dashboard.correlationResult.strength})`, 'info');
+                }
+                
+                log('🎉 All tests completed successfully!', 'success');
+                
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+                log(`Stack: ${error.stack}`, 'error');
+            }
+        }
+        
+        comprehensiveTest();
+    </script>
+</body>
+</html>

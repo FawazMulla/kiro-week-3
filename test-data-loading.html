@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Loading Test</title>
+    <style>
+        body { background: #1e293b; color: white; font-family: monospace; padding: 20px; }
+        .log { background: #334155; padding: 10px; margin: 5px 0; border-radius: 4px; }
+        .error { background: #7f1d1d; }
+        .success { background: #065f46; }
+        .warning { background: #92400e; }
+        .info { background: #1e40af; }
+    </style>
+</head>
+<body>
+    <h1>Data Loading Test</h1>
+    <div id="log"></div>
+    
+    <script type="module">
+        const log = document.getElementById('log');
+        
+        function addLog(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `log ${type}`;
+            div.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            log.appendChild(div);
+            console.log(message);
+        }
+        
+        async function testDataLoading() {
+            try {
+                addLog('=== TESTING DATA LOADING ===', 'info');
+                
+                // Import APIs
+                const { StockAPI } = await import('./src/api/StockAPI.js');
+                const { RedditAPI } = await import('./src/api/RedditAPI.js');
+                
+                const stockAPI = new StockAPI();
+                const redditAPI = new RedditAPI();
+                
+                addLog(`Stock API URL: ${stockAPI.baseUrl}`, 'info');
+                addLog(`Reddit API URL: ${redditAPI.baseUrl}`, 'info');
+                
+                // Test Stock API
+                addLog('--- Testing Stock API ---', 'info');
+                try {
+                    addLog('Fetching NIFTY 50 data for 7 days...', 'info');
+                    const stockData = await stockAPI.fetchNiftyData(7);
+                    addLog(`✅ Stock data loaded: ${stockData.length} data points`, 'success');
+                    
+                    if (stockData.length > 0) {
+                        const latest = stockData[stockData.length - 1];
+                        addLog(`Latest: ${latest.date.toDateString()} - Close: ₹${latest.close.toFixed(2)}`, 'success');
+                    }
+                    
+                    // Test volatility calculation
+                    const volatilityData = stockAPI.calculateVolatility(stockData);
+                    addLog(`✅ Volatility calculated: ${volatilityData.length} points`, 'success');
+                    
+                } catch (error) {
+                    addLog(`❌ Stock API failed: ${error.message}`, 'error');
+                }
+                
+                // Test Reddit API
+                addLog('--- Testing Reddit API ---', 'info');
+                try {
+                    addLog('Fetching trending memes...', 'info');
+                    const memeData = await redditAPI.fetchTrendingMemes('week', 10);
+                    addLog(`✅ Meme data loaded: ${memeData.length} posts`, 'success');
+                    
+                    if (memeData.length > 0) {
+                        const topMeme = memeData[0];
+                        addLog(`Top meme: "${topMeme.title.substring(0, 50)}..." (${topMeme.score} upvotes)`, 'success');
+                    }
+                    
+                    // Test popularity calculation
+                    const popularityData = redditAPI.calculateMemePopularity(memeData);
+                    addLog(`✅ Popularity calculated: ${popularityData.length} points`, 'success');
+                    
+                } catch (error) {
+                    addLog(`❌ Reddit API failed: ${error.message}`, 'error');
+                }
+                
+                // Test Dashboard with mock data if APIs fail
+                addLog('--- Testing Dashboard with Mock Data ---', 'info');
+                
+                // Create mock data
+                const mockStockData = [
+                    { date: new Date(), open: 24000, high: 24100, low: 23900, close: 24050, volume: 1000000 },
+                    { date: new Date(Date.now() - 86400000), open: 23950, high: 24000, low: 23850, close: 23980, volume: 1200000 }
+                ];
+                
+                const mockMemeData = [
+                    { title: "Test Meme 1", score: 1500, comments: 200, created: new Date(), subreddit: "IndianDankMemes" },
+                    { title: "Test Meme 2", score: 1200, comments: 150, created: new Date(), subreddit: "indiameme" }
+                ];
+                
+                // Test Dashboard initialization
+                const { Dashboard } = await import('./src/components/Dashboard.js');
+                const dashboard = new Dashboard(document.body);
+                
+                // Override the _fetchAllData method to return mock data
+                dashboard._fetchAllData = async () => {
+                    addLog('Using mock data for dashboard test', 'warning');
+                    return { stockData: mockStockData, memeData: mockMemeData };
+                };
+                
+                addLog('Initializing dashboard with mock data...', 'info');
+                await dashboard.initialize();
+                addLog('✅ Dashboard initialized with mock data!', 'success');
+                
+                addLog('=== TEST COMPLETE ===', 'success');
+                
+            } catch (error) {
+                addLog(`❌ Test failed: ${error.message}`, 'error');
+                addLog(`Stack: ${error.stack}`, 'error');
+            }
+        }
+        
+        testDataLoading();
+    </script>
+</body>
+</html>

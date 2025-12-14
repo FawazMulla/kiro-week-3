@@ -2,13 +2,54 @@
 <html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
+    
+    <!-- Favicon and app icons -->
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    
+    <!-- Viewport and responsive design -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Visualize the correlation between Indian stock market volatility and trending meme popularity" />
-    <title>Meme vs Market Dashboard</title>
+    <meta name="theme-color" content="#0f172a" />
+    
+    <!-- SEO and description -->
+    <title>Meme vs Market Dashboard - Indian Stock Market & Meme Correlation Analysis</title>
+    <meta name="description" content="Visualize the correlation between Indian stock market volatility (NIFTY 50) and trending meme popularity on Reddit. Real-time data analysis dashboard." />
+    <meta name="keywords" content="Indian stock market, NIFTY 50, meme analysis, correlation, data visualization, Reddit trends, market volatility" />
+    <meta name="author" content="Meme vs Market Dashboard" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://meme-vs-market.vercel.app/" />
+    <meta property="og:title" content="Meme vs Market Dashboard - Stock Market & Meme Correlation" />
+    <meta property="og:description" content="Discover correlations between Indian stock market volatility and trending meme popularity. Interactive data visualization dashboard with real-time analysis." />
+    <meta property="og:image" content="https://meme-vs-market.vercel.app/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:site_name" content="Meme vs Market Dashboard" />
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://meme-vs-market.vercel.app/" />
+    <meta property="twitter:title" content="Meme vs Market Dashboard - Stock Market & Meme Correlation" />
+    <meta property="twitter:description" content="Discover correlations between Indian stock market volatility and trending meme popularity. Interactive data visualization dashboard." />
+    <meta property="twitter:image" content="https://meme-vs-market.vercel.app/og-image.png" />
+    <meta property="twitter:creator" content="@memevsmarket" />
+    
+    <!-- Additional meta tags -->
+    <meta name="robots" content="index, follow" />
+    <meta name="language" content="English" />
+    <meta name="revisit-after" content="7 days" />
+    
+    <!-- Performance hints -->
+    <link rel="preconnect" href="https://query1.finance.yahoo.com" />
+    <link rel="preconnect" href="https://www.reddit.com" />
+    <link rel="dns-prefetch" href="//fonts.googleapis.com" />
   </head>
-  <body class="bg-dark-900 text-dark-50">
-    <div id="app" class="min-h-screen">
+  <body class="bg-slate-900 text-slate-50">
+    <div id="app" class="min-h-screen bg-slate-900 text-slate-100">
       <!-- Dashboard will be rendered here -->
     </div>
     <script type="module" src="/src/main.js"></script>

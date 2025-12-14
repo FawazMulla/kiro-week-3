@@ -92,7 +92,7 @@ describe('Property 10: Loading state completeness', () => {
           panel.showLoading();
 
           // Verify loading indicator is present
-          expect(container.innerHTML).toContain('animate-spin');
+          expect(container.innerHTML).toContain('loading-spinner');
           expect(container.innerHTML).toContain('Loading stock data...');
 
           // Simulate time passing
@@ -134,7 +134,7 @@ describe('Property 10: Loading state completeness', () => {
           panel.showLoading();
 
           // Verify loading indicator is present
-          expect(container.innerHTML).toContain('animate-spin');
+          expect(container.innerHTML).toContain('loading-spinner');
           expect(container.innerHTML).toContain('Loading meme data...');
 
           // Simulate time passing
@@ -178,7 +178,7 @@ describe('Property 10: Loading state completeness', () => {
           panel.showLoading();
 
           // Verify loading indicator is present
-          expect(container.innerHTML).toContain('animate-spin');
+          expect(container.innerHTML).toContain('loading-spinner');
           expect(container.innerHTML).toContain('Calculating insights...');
 
           // Simulate time passing

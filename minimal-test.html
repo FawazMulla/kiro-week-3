@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimal Dashboard Test</title>
+    <link rel="stylesheet" href="./src/style.css">
+</head>
+<body>
+    <div id="app"></div>
+    
+    <script type="module">
+        console.log('Starting minimal dashboard test...');
+        
+        try {
+            // Import Dashboard
+            const { Dashboard } = await import('./src/components/Dashboard.js');
+            console.log('✅ Dashboard imported successfully');
+            
+            // Get container
+            const app = document.querySelector('#app');
+            console.log('✅ Container found:', app);
+            
+            // Create Dashboard instance
+            const dashboard = new Dashboard(app);
+            console.log('✅ Dashboard instance created');
+            
+            // Initialize Dashboard
+            console.log('Initializing dashboard...');
+            await dashboard.initialize();
+            console.log('✅ Dashboard initialized successfully');
+            
+        } catch (error) {
+            console.error('❌ Error:', error);
+            document.getElementById('app').innerHTML = `
+                <div style="color: red; padding: 20px;">
+                    <h1>Error: ${error.message}</h1>
+                    <pre>${error.stack}</pre>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

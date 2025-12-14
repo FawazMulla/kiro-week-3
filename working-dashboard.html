@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Working Dashboard</title>
+    <link rel="stylesheet" href="./src/style.css">
+</head>
+<body class="bg-slate-900 text-slate-50">
+    <div id="app" class="min-h-screen bg-slate-900 text-slate-100">
+        <!-- Dashboard will be rendered here -->
+    </div>
+    
+    <script type="module">
+        import { Dashboard } from './src/components/Dashboard.js';
+        import { ToastNotification } from './src/components/ToastNotification.js';
+        
+        // Initialize global toast notification system
+        window.toastNotification = new ToastNotification();
+        
+        async function initDashboard() {
+            try {
+                console.log('Starting dashboard initialization...');
+                
+                const app = document.querySelector('#app');
+                const dashboard = new Dashboard(app);
+                
+                console.log('Dashboard instance created, initializing...');
+                await dashboard.initialize();
+                
+                console.log('Dashboard initialized successfully!');
+                
+                // Show success message
+                window.toastNotification.showSuccess('Dashboard loaded successfully!');
+                
+            } catch (error) {
+                console.error('Dashboard initialization failed:', error);
+                
+                // Show detailed error
+                const app = document.querySelector('#app');
+                app.innerHTML = `
+                    <div class="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center">
+                        <div class="text-center max-w-2xl mx-auto px-4">
+                            <div class="mb-6">
+                                <svg class="h-16 w-16 text-red-400 mx-auto mb-4" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <h1 class="text-3xl font-bold text-red-400 mb-4">Dashboard Failed to Load</h1>
+                            <p class="text-slate-300 mb-6 text-lg">${error.message}</p>
+                            <details class="text-left bg-slate-800 p-4 rounded-lg mb-6">
+                                <summary class="cursor-pointer text-slate-400 mb-2">Technical Details</summary>
+                                <pre class="text-xs text-slate-400 overflow-auto">${error.stack}</pre>
+                            </details>
+                            <div class="space-y-3">
+                                <button onclick="location.reload()" class="w-full bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-medium transition-colors">
+                                    Retry
+                                </button>
+                                <p class="text-sm text-slate-400">
+                                    If the problem persists, check the browser console for more details.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
+        // Start initialization when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initDashboard);
+        } else {
+            initDashboard();
+        }
+    </script>
+</body>
+</html>

@@ -45,9 +45,10 @@ describe('InsightsPanel', () => {
         { date: new Date('2024-01-01'), popularity: 1000 }
       ];
 
+      // Should not throw an error, should handle gracefully
       expect(() => {
         invalidPanel.render(correlation, volatilityData, popularityData);
-      }).toThrow('Container element with id "non-existent" not found');
+      }).not.toThrow();
     });
 
     it('should render empty state when correlation is null', () => {

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Browser Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #1e293b; color: white; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #065f46; }
+        .error { background: #7f1d1d; }
+        .info { background: #1e40af; }
+    </style>
+</head>
+<body>
+    <h1>Dashboard Browser Test</h1>
+    <div id="status"></div>
+    
+    <script type="module">
+        const statusDiv = document.getElementById('status');
+        
+        function addStatus(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            statusDiv.appendChild(div);
+            console.log(message);
+        }
+        
+        async function testDashboardInBrowser() {
+            try {
+                addStatus('Starting browser dashboard test...', 'info');
+                
+                // Test API imports
+                addStatus('Testing API imports...', 'info');
+                const { StockAPI } = await import('./src/api/StockAPI.js');
+                const { RedditAPI } = await import('./src/api/RedditAPI.js');
+                addStatus('✅ API imports successful', 'success');
+                
+                // Test Stock API with proxy
+                addStatus('Testing Stock API with proxy...', 'info');
+                const stockAPI = new StockAPI();
+                addStatus(`Stock API base URL: ${stockAPI.baseUrl}`, 'info');
+                
+                const stockData = await stockAPI.fetchNiftyData(7);
+                addStatus(`✅ Stock API: ${stockData.length} data points`, 'success');
+                addStatus(`Sample stock data: ${JSON.stringify(stockData[0], null, 2)}`, 'info');
+                
+                // Test Reddit API with proxy
+                addStatus('Testing Reddit API with proxy...', 'info');
+                const redditAPI = new RedditAPI();
+                addStatus(`Reddit API base URL: ${redditAPI.baseUrl}`, 'info');
+                
+                const memeData = await redditAPI.fetchTrendingMemes('day', 5);
+                addStatus(`✅ Reddit API: ${memeData.length} posts`, 'success');
+                if (memeData.length > 0) {
+                    addStatus(`Sample meme data: ${JSON.stringify(memeData[0], null, 2)}`, 'info');
+                }
+                
+                addStatus('🎉 All browser tests passed!', 'success');
+                
+            } catch (error) {
+                addStatus(`❌ Error: ${error.message}`, 'error');
+                console.error('Full error:', error);
+            }
+        }
+        
+        testDashboardInBrowser();
+    </script>
+</body>
+</html>

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimal Dashboard Debug</title>
+    <link rel="stylesheet" href="./src/style.css">
+    <style>
+        .debug-log { 
+            position: fixed; 
+            top: 10px; 
+            right: 10px; 
+            width: 300px; 
+            background: #1e293b; 
+            border: 1px solid #475569; 
+            padding: 10px; 
+            font-size: 12px; 
+            max-height: 80vh; 
+            overflow-y: auto; 
+            z-index: 1000;
+        }
+        .debug-item { padding: 5px; margin: 2px 0; border-radius: 3px; }
+        .success { background: #065f46; }
+        .error { background: #7f1d1d; }
+        .info { background: #1e40af; }
+    </style>
+</head>
+<body>
+    <div id="debug-log" class="debug-log">
+        <h3>Debug Log</h3>
+        <div id="log-content"></div>
+    </div>
+    
+    <div id="app"></div>
+    
+    <script type="module">
+        const logContent = document.getElementById('log-content');
+        
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `debug-item ${type}`;
+            div.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            logContent.appendChild(div);
+            console.log(`[${type.toUpperCase()}] ${message}`);
+            logContent.scrollTop = logContent.scrollHeight;
+        }
+        
+        async function testDashboard() {
+            try {
+                log('Starting minimal dashboard test', 'info');
+                
+                // Test 1: Basic imports
+                log('Testing imports...', 'info');
+                const { Dashboard } = await import('./src/components/Dashboard.js');
+                log('✅ Dashboard imported', 'success');
+                
+                // Test 2: Create instance
+                log('Creating dashboard instance...', 'info');
+                const app = document.querySelector('#app');
+                const dashboard = new Dashboard(app);
+                log('✅ Dashboard instance created', 'success');
+                
+                // Test 3: Initialize (this is where it likely fails)
+                log('Initializing dashboard...', 'info');
+                await dashboard.initialize();
+                log('✅ Dashboard initialized successfully!', 'success');
+                
+                // Test 4: Check if UI was created
+                const header = document.querySelector('header');
+                if (header) {
+                    log('✅ Dashboard UI created', 'success');
+                } else {
+                    log('❌ Dashboard UI not found', 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+                log(`Stack: ${error.stack}`, 'error');
+                
+                // Show error in main app area too
+                const app = document.querySelector('#app');
+                app.innerHTML = `
+                    <div class="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center">
+                        <div class="text-center max-w-md mx-auto px-4">
+                            <h1 class="text-2xl font-bold text-red-400 mb-4">Dashboard Failed</h1>
+                            <p class="text-slate-300 mb-4">${error.message}</p>
+                            <pre class="text-xs text-slate-400 bg-slate-800 p-4 rounded overflow-auto">${error.stack}</pre>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
+        testDashboard();
+    </script>
+</body>
+</html>

@@ -1,0 +1,34 @@
+{
+  "mcpServers": {
+    "indian-stock-server": {
+      "command": "node",
+      "args": [
+        "index.js"
+      ],
+      "cwd": "C:/Users/Fawaz/Desktop/kiro-week-3/mcp-servers/stock-server",
+      "env": {
+        "FASTMCP_LOG_LEVEL": "DEBUG"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "fetch_nifty_data",
+        "calculate_volatility"
+      ]
+    },
+    "social-media-server": {
+      "command": "node",
+      "args": [
+        "index.js"
+      ],
+      "cwd": "C:/Users/Fawaz/Desktop/kiro-week-3/mcp-servers/social-server",
+      "env": {
+        "FASTMCP_LOG_LEVEL": "DEBUG"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "fetch_trending_memes",
+        "calculate_popularity"
+      ]
+    }
+  }
+}

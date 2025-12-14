@@ -6,7 +6,7 @@
 
 import { Chart, registerables } from 'chart.js';
 
-// Register Chart.js components
+// Register Chart.js components including decimation plugin for performance
 Chart.register(...registerables);
 
 export class CorrelationChart {
@@ -246,7 +246,39 @@ export class CorrelationChart {
         mode: 'index',
         intersect: false
       },
+      // Performance optimizations for slow networks/devices
+      animation: {
+        duration: window.navigator.connection?.effectiveType === 'slow-2g' || 
+                  window.navigator.connection?.effectiveType === '2g' ? 0 : 750,
+        easing: 'easeOutQuart'
+      },
+      elements: {
+        point: {
+          radius: 3,
+          hoverRadius: 5,
+          hitRadius: 8
+        },
+        line: {
+          tension: 0.3,
+          borderCapStyle: 'round',
+          borderJoinStyle: 'round'
+        }
+      },
+      // Optimize for performance
+      parsing: {
+        xAxisKey: 'x',
+        yAxisKey: 'y'
+      },
+      normalized: true,
+      spanGaps: true,
       plugins: {
+        // Decimation plugin for large datasets (Chart.js built-in)
+        decimation: {
+          enabled: true,
+          algorithm: 'lttb', // Largest-Triangle-Three-Buckets algorithm
+          samples: 100, // Reduce to 100 points for performance
+          threshold: 50 // Only decimate if more than 50 points
+        },
         legend: {
           display: true,
           position: 'top',

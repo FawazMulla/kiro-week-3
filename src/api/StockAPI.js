@@ -5,7 +5,10 @@
 
 export class StockAPI {
   constructor() {
-    this.baseUrl = 'https://query1.finance.yahoo.com/v8/finance/chart';
+    // Use proxy in development, direct API in production
+    this.baseUrl = import.meta.env.DEV 
+      ? '/api/yahoo/v8/finance/chart'
+      : 'https://query1.finance.yahoo.com/v8/finance/chart';
     this.maxRetries = 3;
     this.retryDelay = 1000; // Initial delay in ms
   }
@@ -31,21 +34,61 @@ export class StockAPI {
    */
   async _fetchWithRetry(url, attempt = 1) {
     try {
-      const response = await fetch(url);
+      console.log(`Fetching stock data (attempt ${attempt}):`, url);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+          'Accept': 'application/json, text/plain, */*',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        },
+        mode: 'cors',
+        credentials: 'omit'
+      });
+      
+      console.log(`Stock API response status: ${response.status}`);
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`);
       }
       
       const data = await response.json();
-      return this.parseYahooFinanceResponse(data);
+      console.log('Stock API response received, parsing...');
+      
+      const parsedData = this.parseYahooFinanceResponse(data);
+      console.log(`Successfully parsed ${parsedData.length} stock data points`);
+      
+      return parsedData;
     } catch (error) {
+      console.error(`Stock API fetch attempt ${attempt} failed:`, error);
+      
       if (attempt >= this.maxRetries) {
-        throw new Error(`Failed to fetch stock data after ${this.maxRetries} attempts: ${error.message}`);
+        // Provide more specific error messages
+        let userMessage = 'Failed to fetch stock data';
+        
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+          userMessage = 'Network error while fetching stock data. Please check your internet connection.';
+        } else if (error.message.includes('timeout')) {
+          userMessage = 'Stock data request timed out. The server may be busy.';
+        } else if (error.message.includes('CORS')) {
+          userMessage = 'Cross-origin request blocked. Please try refreshing the page.';
+        } else if (error.message.includes('500') || error.message.includes('502') || error.message.includes('503')) {
+          userMessage = 'Stock data service is temporarily unavailable. Please try again later.';
+        } else if (error.message.includes('404')) {
+          userMessage = 'Stock data not found. The symbol may be invalid.';
+        } else if (error.message.includes('429')) {
+          userMessage = 'Too many requests. Please wait a moment before trying again.';
+        }
+        
+        throw new Error(`${userMessage} (${this.maxRetries} attempts failed): ${error.message}`);
       }
       
       // Exponential backoff: 1s, 2s, 4s
       const delay = this.retryDelay * Math.pow(2, attempt - 1);
+      console.log(`Retrying in ${delay}ms...`);
       await new Promise(resolve => setTimeout(resolve, delay));
       
       return this._fetchWithRetry(url, attempt + 1);

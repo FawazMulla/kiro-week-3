@@ -3,12 +3,53 @@
 /* Custom component styles */
 .panel {
   @apply bg-slate-800 dark:bg-slate-800 rounded-lg shadow-xl p-6 border border-slate-700 dark:border-slate-600;
-  transition: all 0.2s ease-in-out;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
 }
 
 .panel:hover {
   @apply shadow-xl transform translate-y-[-2px];
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
+}
+
+/* Smooth content transitions */
+.panel-content {
+  transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+}
+
+.panel-content.updating {
+  opacity: 0.7;
+  transform: scale(0.98);
+}
+
+/* Metric value animations */
+.metric-value {
+  @apply text-3xl font-bold text-slate-100 dark:text-slate-50;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.metric-value.updating {
+  transform: scale(1.05);
+  color: #60a5fa; /* Blue-400 */
+}
+
+/* Loading state transitions */
+.loading-fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.loading-fade-out {
+  animation: fadeOut 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-10px); }
 }
 
 .panel-header {

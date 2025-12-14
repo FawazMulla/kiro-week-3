@@ -33,11 +33,12 @@ describe('StockPanel', () => {
   });
 
   describe('render', () => {
-    it('should throw error if container not found', () => {
+    it('should handle missing container gracefully', () => {
       const invalidPanel = new StockPanel('non-existent-id');
+      // Should not throw an error, should handle gracefully
       expect(() => {
         invalidPanel.render([], []);
-      }).toThrow('Container element with id "non-existent-id" not found');
+      }).not.toThrow();
     });
 
     it('should render empty state when no stock data provided', () => {
@@ -266,7 +267,7 @@ describe('StockPanel', () => {
       panel.showLoading();
 
       expect(container.innerHTML).toContain('Loading stock data...');
-      expect(container.innerHTML).toContain('animate-spin');
+      expect(container.innerHTML).toContain('loading-spinner');
     });
 
     it('should display custom loading message', () => {

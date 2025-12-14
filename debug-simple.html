@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Debug</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #1e293b; color: white; }
+        .test { padding: 10px; margin: 10px 0; border: 1px solid #ccc; }
+    </style>
+</head>
+<body>
+    <h1>Simple Debug Test</h1>
+    <div id="results"></div>
+    
+    <script type="module">
+        const results = document.getElementById('results');
+        
+        function addResult(test, success, message) {
+            const div = document.createElement('div');
+            div.className = 'test';
+            div.style.backgroundColor = success ? '#065f46' : '#7f1d1d';
+            div.innerHTML = `<strong>${test}:</strong> ${message}`;
+            results.appendChild(div);
+        }
+        
+        // Test 1: Basic imports
+        try {
+            const { StockAPI } = await import('./src/api/StockAPI.js');
+            const { RedditAPI } = await import('./src/api/RedditAPI.js');
+            addResult('API Imports', true, 'Success');
+        } catch (error) {
+            addResult('API Imports', false, error.message);
+        }
+        
+        // Test 2: API instances
+        try {
+            const { StockAPI } = await import('./src/api/StockAPI.js');
+            const { RedditAPI } = await import('./src/api/RedditAPI.js');
+            
+            const stockAPI = new StockAPI();
+            const redditAPI = new RedditAPI();
+            
+            addResult('API Instances', true, `Stock URL: ${stockAPI.baseUrl}, Reddit URL: ${redditAPI.baseUrl}`);
+        } catch (error) {
+            addResult('API Instances', false, error.message);
+        }
+        
+        // Test 3: Simple API call
+        try {
+            const { StockAPI } = await import('./src/api/StockAPI.js');
+            const stockAPI = new StockAPI();
+            
+            // Try a simple fetch to test proxy
+            const response = await fetch('/api/yahoo/v8/finance/chart/^NSEI?period1=1765000000&period2=1765723000&interval=1d');
+            addResult('Proxy Test', response.ok, `Status: ${response.status}`);
+        } catch (error) {
+            addResult('Proxy Test', false, error.message);
+        }
+        
+        // Test 4: Dashboard import
+        try {
+            const { Dashboard } = await import('./src/components/Dashboard.js');
+            addResult('Dashboard Import', true, 'Success');
+        } catch (error) {
+            addResult('Dashboard Import', false, error.message);
+        }
+    </script>
+</body>
+</html>

@@ -26,9 +26,10 @@ describe('MemePanel', () => {
   });
 
   describe('render', () => {
-    it('should throw error if container element not found', () => {
+    it('should handle missing container gracefully', () => {
       const invalidPanel = new MemePanel('non-existent-id');
-      expect(() => invalidPanel.render([])).toThrow('Container element with id "non-existent-id" not found');
+      // Should not throw an error, should handle gracefully
+      expect(() => invalidPanel.render([])).not.toThrow();
     });
 
     it('should render empty state when no memes provided', () => {

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Proxy Test</title>
+    <style>
+        body { background: #1e293b; color: white; font-family: monospace; padding: 20px; }
+        .log { background: #334155; padding: 10px; margin: 5px 0; border-radius: 4px; }
+        .error { background: #7f1d1d; }
+        .success { background: #065f46; }
+        .warning { background: #92400e; }
+    </style>
+</head>
+<body>
+    <h1>API Proxy Test</h1>
+    <div id="log"></div>
+    
+    <script type="module">
+        const log = document.getElementById('log');
+        
+        function addLog(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `log ${type}`;
+            div.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            log.appendChild(div);
+            console.log(message);
+        }
+        
+        async function testAPIs() {
+            try {
+                addLog('Testing API proxy endpoints...');
+                
+                // Test Yahoo Finance proxy
+                addLog('Testing Yahoo Finance proxy...');
+                try {
+                    const period2 = Math.floor(Date.now() / 1000);
+                    const period1 = period2 - (7 * 24 * 60 * 60); // 7 days ago
+                    const yahooUrl = `/api/yahoo/v8/finance/chart/^NSEI?period1=${period1}&period2=${period2}&interval=1d`;
+                    
+                    const yahooResponse = await fetch(yahooUrl);
+                    addLog(`Yahoo Finance response: ${yahooResponse.status} ${yahooResponse.statusText}`, 
+                           yahooResponse.ok ? 'success' : 'error');
+                    
+                    if (yahooResponse.ok) {
+                        const yahooData = await yahooResponse.json();
+                        addLog(`Yahoo Finance data received: ${JSON.stringify(yahooData).substring(0, 100)}...`, 'success');
+                    }
+                } catch (error) {
+                    addLog(`Yahoo Finance proxy failed: ${error.message}`, 'error');
+                }
+                
+                // Test Reddit proxy
+                addLog('Testing Reddit proxy...');
+                try {
+                    const redditUrl = '/api/reddit/r/IndianDankMemes/top.json?t=week&limit=5';
+                    const redditResponse = await fetch(redditUrl);
+                    addLog(`Reddit response: ${redditResponse.status} ${redditResponse.statusText}`, 
+                           redditResponse.ok ? 'success' : 'error');
+                    
+                    if (redditResponse.ok) {
+                        const redditData = await redditResponse.json();
+                        addLog(`Reddit data received: ${redditData.data?.children?.length || 0} posts`, 'success');
+                    }
+                } catch (error) {
+                    addLog(`Reddit proxy failed: ${error.message}`, 'error');
+                }
+                
+                // Test API classes
+                addLog('Testing API classes...');
+                const { StockAPI } = await import('./src/api/StockAPI.js');
+                const { RedditAPI } = await import('./src/api/RedditAPI.js');
+                
+                const stockAPI = new StockAPI();
+                const redditAPI = new RedditAPI();
+                
+                addLog(`Stock API base URL: ${stockAPI.baseUrl}`, 'info');
+                addLog(`Reddit API base URL: ${redditAPI.baseUrl}`, 'info');
+                
+                // Test actual API calls
+                addLog('Testing StockAPI.fetchNiftyData(7)...');
+                try {
+                    const stockData = await stockAPI.fetchNiftyData(7);
+                    addLog(`✅ Stock data fetched: ${stockData.length} data points`, 'success');
+                } catch (error) {
+                    addLog(`❌ Stock API failed: ${error.message}`, 'error');
+                }
+                
+                addLog('Testing RedditAPI.fetchTrendingMemes()...');
+                try {
+                    const memeData = await redditAPI.fetchTrendingMemes('week', 5);
+                    addLog(`✅ Meme data fetched: ${memeData.length} posts`, 'success');
+                } catch (error) {
+                    addLog(`❌ Reddit API failed: ${error.message}`, 'error');
+                }
+                
+                addLog('API testing complete!', 'success');
+                
+            } catch (error) {
+                addLog(`❌ Test failed: ${error.message}`, 'error');
+            }
+        }
+        
+        testAPIs();
+    </script>
+</body>
+</html>

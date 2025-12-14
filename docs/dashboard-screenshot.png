@@ -1,0 +1,19 @@
+# Dashboard Screenshot Placeholder
+
+This file serves as a placeholder for the dashboard screenshot.
+
+To add the actual screenshot:
+1. Take a screenshot of the running dashboard
+2. Save it as `dashboard-screenshot.png` in the `docs/` directory
+3. Ensure the image shows:
+   - Stock panel with NIFTY 50 data
+   - Meme panel with trending posts
+   - Correlation chart with dual axes
+   - Insights panel with correlation metrics
+   - Time range filter controls
+
+Recommended screenshot specifications:
+- Resolution: 1920x1080 or higher
+- Format: PNG for crisp UI elements
+- Include browser chrome to show it's a web application
+- Capture during active data loading to show real functionality

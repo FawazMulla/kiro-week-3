@@ -7,10 +7,14 @@ import { CorrelationChart } from './CorrelationChart.js';
 import { StockPanel } from './StockPanel.js';
 import { MemePanel } from './MemePanel.js';
 import { InsightsPanel } from './InsightsPanel.js';
+import { TimeRangeFilter } from './TimeRangeFilter.js';
+import { ErrorBoundary } from './ErrorBoundary.js';
+import { ToastNotification } from './ToastNotification.js';
 import { StockAPI } from '../api/StockAPI.js';
 import { RedditAPI } from '../api/RedditAPI.js';
 import { calculateCorrelation } from '../utils/Correlation.js';
 import { Cache } from '../utils/Cache.js';
+import { RetryHandler } from '../utils/RetryHandler.js';
 
 export class Dashboard {
   /**
@@ -20,6 +24,15 @@ export class Dashboard {
   constructor(container) {
     this.container = container;
     this.currentTimeRange = 30; // Default to 30 days
+    
+    // Initialize error handling
+    this.errorBoundary = null;
+    this.toastNotification = window.toastNotification || new ToastNotification();
+    this.retryHandler = new RetryHandler({
+      maxRetries: 3,
+      baseDelay: 1000,
+      maxDelay: 10000
+    });
     
     // Initialize API clients
     this.stockAPI = new StockAPI();
@@ -33,6 +46,7 @@ export class Dashboard {
     this.stockPanel = null;
     this.memePanel = null;
     this.insightsPanel = null;
+    this.timeRangeFilter = null;
     
     // Data storage
     this.stockData = [];
@@ -57,14 +71,23 @@ export class Dashboard {
       // Wait for DOM to be ready
       await new Promise(resolve => setTimeout(resolve, 0));
       
+      // Set up error boundary
+      this._setupErrorBoundary();
+      
       // Initialize all child components
       this._initializeComponents();
       
       // Set up event listeners
       this._setupEventListeners();
       
-      // Load initial data with default time range
-      await this.loadData(this.currentTimeRange);
+      // Load initial data with default time range (with error handling)
+      try {
+        await this.loadData(this.currentTimeRange);
+      } catch (error) {
+        console.warn('Initial data load failed, dashboard will continue without data:', error);
+        // Show empty state instead of failing completely
+        this._renderAllComponents();
+      }
       
     } catch (error) {
       this.handleError(error, 'Failed to initialize dashboard');
@@ -89,9 +112,6 @@ export class Dashboard {
       // Show loading indicators on all components
       this._showAllLoadingStates();
 
-      // Update active time range button
-      this._updateTimeRangeButtons(timeRange);
-
       // Try to load from cache first
       const cachedData = this._loadFromCache(timeRange);
       if (cachedData) {
@@ -106,6 +126,10 @@ export class Dashboard {
       // Fetch fresh data
       console.log(`Loading fresh data for ${timeRange} days`);
       const freshData = await this._fetchAllData(timeRange);
+      console.log('Fresh data received:', { 
+        stockData: freshData.stockData.length, 
+        memeData: freshData.memeData.length 
+      });
       
       // Cache the fresh data
       this._saveToCache(timeRange, freshData);
@@ -114,14 +138,85 @@ export class Dashboard {
       this._processAndRenderData(freshData);
 
     } catch (error) {
+      console.error(`Data loading failed for ${timeRange} days:`, error);
       this.handleError(error, `Failed to load data for ${timeRange} days`);
+      
+      // Show empty state instead of leaving loading indicators
+      this._processAndRenderData({ stockData: [], memeData: [] });
     } finally {
       this.isLoading = false;
     }
   }
 
   /**
-   * Fetch stock and meme data in parallel
+   * Create mock data for demonstration purposes
+   * @private
+   * @param {number} timeRange - Number of days to generate
+   * @returns {{stockData: StockData[], memeData: MemePost[]}} Mock data
+   */
+  _createMockData(timeRange) {
+    console.log('Creating mock data for demonstration...');
+    
+    // Create mock stock data
+    const stockData = [];
+    const basePrice = 24000;
+    const now = new Date();
+    
+    for (let i = timeRange - 1; i >= 0; i--) {
+      const date = new Date(now.getTime() - (i * 24 * 60 * 60 * 1000));
+      const variation = (Math.random() - 0.5) * 1000;
+      const open = basePrice + variation;
+      const close = open + (Math.random() - 0.5) * 200;
+      const high = Math.max(open, close) + Math.random() * 100;
+      const low = Math.min(open, close) - Math.random() * 100;
+      const volume = 1000000 + Math.random() * 2000000;
+      
+      stockData.push({ date, open, high, low, close, volume });
+    }
+    
+    // Create mock meme data
+    const memeData = [];
+    const titles = [
+      "When you realize it's Monday again 😭",
+      "POV: You're trying to explain crypto to your parents",
+      "Me after checking my portfolio",
+      "That feeling when NIFTY goes brrrr 🚀",
+      "Retail investors vs Market makers",
+      "When someone asks about my trading strategy",
+      "Market crash? What market crash? 📈",
+      "Diamond hands vs Paper hands",
+      "Me buying the dip for the 10th time",
+      "When your stop loss triggers at the bottom",
+      "Stonks only go up 📈",
+      "Me explaining why I'm still holding",
+      "Bull market vs Bear market energy",
+      "When you buy high and sell low again",
+      "Portfolio diversification be like..."
+    ];
+    
+    const subreddits = ['IndianDankMemes', 'indiameme', 'SaimanSays'];
+    
+    for (let i = 0; i < 25; i++) {
+      const daysAgo = Math.floor(Math.random() * Math.min(timeRange, 7));
+      const date = new Date(now.getTime() - (daysAgo * 24 * 60 * 60 * 1000));
+      
+      memeData.push({
+        title: titles[Math.floor(Math.random() * titles.length)],
+        score: Math.floor(Math.random() * 5000) + 100,
+        comments: Math.floor(Math.random() * 500) + 10,
+        created: date,
+        url: `https://reddit.com/r/demo/post${i}`,
+        subreddit: subreddits[Math.floor(Math.random() * subreddits.length)],
+        thumbnail: '',
+        author: `user${i}`
+      });
+    }
+    
+    return { stockData, memeData: memeData.sort((a, b) => b.score - a.score) };
+  }
+
+  /**
+   * Fetch stock and meme data in parallel with network optimizations
    * @private
    * @param {number} timeRange - Number of days to fetch
    * @returns {Promise<{stockData: StockData[], memeData: MemePost[]}>}
@@ -137,11 +232,88 @@ export class Dashboard {
       redditTimeframe = 'month';
     }
 
-    // Fetch data in parallel
+    // Network performance optimization: Set timeout for slow connections
+    const NETWORK_TIMEOUT = 15000; // 15 seconds for slow networks
+
+    // Create timeout wrapper for slow networks
+    const withTimeout = (promise, timeout) => {
+      return Promise.race([
+        promise,
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Network timeout - connection too slow')), timeout)
+        )
+      ]);
+    };
+
+    // Create retry wrappers for API calls with timeout support
+    const stockAPIWithRetry = this.retryHandler.createRetryWrapper(
+      (days) => withTimeout(this.stockAPI.fetchNiftyData(days), NETWORK_TIMEOUT),
+      'Stock data fetch',
+      {
+        onRetry: (error, attempt, maxAttempts) => {
+          const isTimeout = error.message.includes('timeout');
+          this.toastNotification.showWarning(
+            isTimeout 
+              ? `Slow connection detected. Retrying... (${attempt}/${maxAttempts})`
+              : `Retrying stock data fetch... (${attempt}/${maxAttempts})`,
+            { duration: 3000 }
+          );
+        },
+        onFailure: (error) => {
+          const isTimeout = error.message.includes('timeout');
+          this.toastNotification.showError(
+            isTimeout
+              ? 'Connection is too slow. Please try again with a better network.'
+              : 'Unable to load stock data. Please check your connection.',
+            {
+              persistent: false,
+              onRetry: () => this.loadData(this.currentTimeRange)
+            }
+          );
+        }
+      }
+    );
+
+    const redditAPIWithRetry = this.retryHandler.createRetryWrapper(
+      (timeframe, limit) => withTimeout(this.redditAPI.fetchTrendingMemes(timeframe, limit), NETWORK_TIMEOUT),
+      'Meme data fetch',
+      {
+        onRetry: (error, attempt, maxAttempts) => {
+          const isTimeout = error.message.includes('timeout');
+          this.toastNotification.showWarning(
+            isTimeout
+              ? `Slow connection detected. Retrying... (${attempt}/${maxAttempts})`
+              : `Retrying meme data fetch... (${attempt}/${maxAttempts})`,
+            { duration: 3000 }
+          );
+        },
+        onFailure: (error) => {
+          const isTimeout = error.message.includes('timeout');
+          this.toastNotification.showError(
+            isTimeout
+              ? 'Connection is too slow. Please try again with a better network.'
+              : 'Unable to load meme data. Please check your connection.',
+            {
+              persistent: false,
+              onRetry: () => this.loadData(this.currentTimeRange)
+            }
+          );
+        }
+      }
+    );
+
+    // Track fetch performance for network quality indication
+    const fetchStartTime = Date.now();
+    
+    // Fetch data in parallel with retry logic
     const [stockResult, memeResult] = await Promise.allSettled([
-      this.stockAPI.fetchNiftyData(timeRange),
-      this.redditAPI.fetchTrendingMemes(redditTimeframe, 25)
+      stockAPIWithRetry(timeRange),
+      redditAPIWithRetry(redditTimeframe, 25)
     ]);
+    
+    // Calculate and log network performance
+    const fetchDuration = Date.now() - fetchStartTime;
+    this._logNetworkPerformance(fetchDuration, stockResult.status === 'fulfilled', memeResult.status === 'fulfilled');
 
     // Handle stock data result
     let stockData = [];
@@ -159,6 +331,32 @@ export class Dashboard {
     } else {
       this.loadingErrors.push(`Meme data: ${memeResult.reason.message}`);
       console.error('Failed to fetch meme data:', memeResult.reason);
+    }
+
+    // If both APIs failed, use mock data for demonstration
+    if (stockData.length === 0 && memeData.length === 0) {
+      console.warn('Both APIs failed, using mock data for demonstration');
+      this.toastNotification.showWarning(
+        'Using sample data for demonstration. Real data unavailable.',
+        { duration: 5000 }
+      );
+      this._updateDataSourceInfo('sample');
+      return this._createMockData(timeRange);
+    }
+
+    // If only one API failed, supplement with partial mock data
+    if (stockData.length === 0) {
+      console.warn('Stock API failed, using mock stock data');
+      const mockData = this._createMockData(timeRange);
+      stockData = mockData.stockData;
+      this._updateDataSourceInfo('partial');
+    }
+
+    if (memeData.length === 0) {
+      console.warn('Reddit API failed, using mock meme data');
+      const mockData = this._createMockData(timeRange);
+      memeData = mockData.memeData;
+      this._updateDataSourceInfo('partial');
     }
 
     return { stockData, memeData };
@@ -222,14 +420,30 @@ export class Dashboard {
   }
 
   /**
-   * Render a component safely with error handling
+   * Render a component safely with error handling and smooth transitions
    * @private
    * @param {string} componentName - Name of the component for error reporting
    * @param {Function} renderFunction - Function to execute for rendering
    */
   _renderComponentSafely(componentName, renderFunction) {
     try {
-      renderFunction();
+      // Add updating class for smooth transitions
+      const panelElement = document.getElementById(componentName.replace('Panel', '-panel'));
+      if (panelElement) {
+        const contentElement = panelElement.querySelector('.panel-content') || panelElement;
+        contentElement.classList.add('updating');
+        
+        // Execute render function
+        renderFunction();
+        
+        // Remove updating class after a short delay
+        setTimeout(() => {
+          contentElement.classList.remove('updating');
+        }, 100);
+      } else {
+        // Fallback if panel element not found
+        renderFunction();
+      }
     } catch (error) {
       console.error(`Failed to render ${componentName}:`, error);
       // Don't re-throw - continue with other components
@@ -256,8 +470,24 @@ export class Dashboard {
   handleError(error, context = 'An error occurred') {
     console.error(`${context}:`, error);
     
-    // Show error message to user
-    this._showErrorMessage(`${context}: ${error.message}`);
+    // Show toast notification for transient errors
+    this.toastNotification.showError(
+      this._getUserFriendlyErrorMessage(error, context),
+      {
+        duration: 8000,
+        onRetry: () => {
+          // Provide retry functionality based on context
+          if (context.includes('data') || context.includes('fetch')) {
+            return this.loadData(this.currentTimeRange);
+          } else if (context.includes('initialize')) {
+            return this.initialize();
+          }
+        }
+      }
+    );
+    
+    // Also show error message in UI for persistent display
+    this._showErrorMessage(`${context}: ${this._getUserFriendlyErrorMessage(error, context)}`);
     
     // Hide loading indicators
     this._hideAllLoadingStates();
@@ -286,22 +516,7 @@ export class Dashboard {
 
         <!-- Time Range Filter -->
         <div class="container-responsive py-4 sm:py-6">
-          <div class="flex justify-center">
-            <div class="bg-slate-800 rounded-lg p-1 inline-flex shadow-md" id="time-range-filter" role="tablist" aria-label="Time range selection">
-              <button class="time-range-btn" data-range="7" role="tab" aria-selected="false">
-                <span class="hidden sm:inline">7 Days</span>
-                <span class="sm:hidden">7D</span>
-              </button>
-              <button class="time-range-btn active" data-range="30" role="tab" aria-selected="true">
-                <span class="hidden sm:inline">30 Days</span>
-                <span class="sm:hidden">30D</span>
-              </button>
-              <button class="time-range-btn" data-range="90" role="tab" aria-selected="false">
-                <span class="hidden sm:inline">90 Days</span>
-                <span class="sm:hidden">90D</span>
-              </button>
-            </div>
-          </div>
+          <div id="time-range-filter-container"></div>
         </div>
 
         <!-- Main Content -->
@@ -349,7 +564,7 @@ export class Dashboard {
         <!-- Footer for better spacing -->
         <footer class="container-responsive py-4 border-t border-slate-700">
           <div class="text-center text-slate-400 text-sm">
-            <p>Data sources: Yahoo Finance, Reddit API</p>
+            <p id="data-source-info">Data sources: Yahoo Finance, Reddit API</p>
           </div>
         </footer>
       </div>
@@ -361,18 +576,87 @@ export class Dashboard {
    * @private
    */
   _initializeComponents() {
+    // Initialize each component individually with error handling
     try {
-      // Initialize correlation chart
       this.chart = new CorrelationChart('correlation-chart');
-      
-      // Initialize panels
-      this.stockPanel = new StockPanel('stock-panel');
-      this.memePanel = new MemePanel('meme-panel');
-      this.insightsPanel = new InsightsPanel('insights-panel');
+      console.log('✅ CorrelationChart initialized');
     } catch (error) {
-      console.error('Failed to initialize components:', error);
-      // Continue with null components - they will be checked before use
+      console.error('Failed to initialize CorrelationChart:', error);
+      this.chart = null;
     }
+    
+    try {
+      this.stockPanel = new StockPanel('stock-panel');
+      console.log('✅ StockPanel initialized');
+    } catch (error) {
+      console.error('Failed to initialize StockPanel:', error);
+      this.stockPanel = null;
+    }
+    
+    try {
+      this.memePanel = new MemePanel('meme-panel');
+      console.log('✅ MemePanel initialized');
+    } catch (error) {
+      console.error('Failed to initialize MemePanel:', error);
+      this.memePanel = null;
+    }
+    
+    try {
+      this.insightsPanel = new InsightsPanel('insights-panel');
+      console.log('✅ InsightsPanel initialized');
+    } catch (error) {
+      console.error('Failed to initialize InsightsPanel:', error);
+      this.insightsPanel = null;
+    }
+    
+    try {
+      this.timeRangeFilter = new TimeRangeFilter(
+        'time-range-filter-container',
+        (newTimeRange) => this.handleTimeRangeChange(newTimeRange)
+      );
+      this.timeRangeFilter.setTimeRange(this.currentTimeRange);
+      console.log('✅ TimeRangeFilter initialized');
+    } catch (error) {
+      console.error('Failed to initialize TimeRangeFilter:', error);
+      this.timeRangeFilter = null;
+    }
+    
+    console.log('Component initialization complete');
+  }
+
+  /**
+   * Set up error boundary for the dashboard
+   * @private
+   */
+  _setupErrorBoundary() {
+    this.errorBoundary = new ErrorBoundary(this.container, (error, context) => {
+      // Handle rendering errors with toast notifications
+      this.toastNotification.showError(
+        'A display error occurred. The page will attempt to recover.',
+        {
+          duration: 5000,
+          onRetry: () => {
+            this.errorBoundary.retry();
+            // Attempt to re-render components
+            setTimeout(() => {
+              this._renderAllComponents();
+            }, 100);
+          }
+        }
+      );
+    });
+
+    // Listen for retry events from error boundary
+    this.container.addEventListener('errorBoundaryRetry', () => {
+      // Attempt to re-initialize components that may have failed
+      try {
+        this._initializeComponents();
+        this._renderAllComponents();
+        this.toastNotification.showSuccess('Dashboard recovered successfully');
+      } catch (error) {
+        console.error('Failed to recover from error boundary retry:', error);
+      }
+    });
   }
 
   /**
@@ -380,27 +664,50 @@ export class Dashboard {
    * @private
    */
   _setupEventListeners() {
-    // Time range filter buttons
-    const timeRangeFilter = document.getElementById('time-range-filter');
-    if (timeRangeFilter) {
-      timeRangeFilter.addEventListener('click', (event) => {
-        if (event.target.classList.contains('time-range-btn')) {
-          const newRange = parseInt(event.target.dataset.range);
-          this.handleTimeRangeChange(newRange);
-        }
-      });
-    }
+    // Window resize handler for chart responsiveness with 300ms debouncing
+    this._debouncedResize = this._debounce(() => {
+      if (this.chart) {
+        this.chart.resize();
+      }
+      // Also trigger responsive layout adjustments
+      this._handleResponsiveLayout();
+    }, 300);
+    
+    window.addEventListener('resize', this._debouncedResize);
+  }
 
-    // Window resize handler for chart responsiveness
-    let resizeTimeout;
-    window.addEventListener('resize', () => {
-      clearTimeout(resizeTimeout);
-      resizeTimeout = setTimeout(() => {
-        if (this.chart) {
-          this.chart.resize();
-        }
-      }, 300);
-    });
+  /**
+   * Handle responsive layout adjustments
+   * @private
+   */
+  _handleResponsiveLayout() {
+    // Trigger any responsive layout adjustments if needed
+    // This can be extended for future responsive features
+    const viewportWidth = window.innerWidth;
+    
+    // Log viewport changes for debugging (can be removed in production)
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Viewport resized to: ${viewportWidth}px`);
+    }
+  }
+
+  /**
+   * Debounce utility function
+   * @private
+   * @param {Function} func - Function to debounce
+   * @param {number} wait - Wait time in milliseconds
+   * @returns {Function} Debounced function
+   */
+  _debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func.apply(this, args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
   }
 
   /**
@@ -479,24 +786,7 @@ export class Dashboard {
     }
   }
 
-  /**
-   * Update time range button states
-   * @private
-   * @param {number} activeRange - Currently active time range
-   */
-  _updateTimeRangeButtons(activeRange) {
-    const buttons = document.querySelectorAll('.time-range-btn');
-    buttons.forEach(button => {
-      const range = parseInt(button.dataset.range);
-      if (range === activeRange) {
-        button.classList.add('active');
-        button.setAttribute('aria-selected', 'true');
-      } else {
-        button.classList.remove('active');
-        button.setAttribute('aria-selected', 'false');
-      }
-    });
-  }
+
 
   /**
    * Load data from cache if available and valid
@@ -592,15 +882,154 @@ export class Dashboard {
         errorContainer.classList.add('hidden');
       }, 15000);
     }
+
+    // Also show toast notifications for partial data loading
+    if (this.loadingErrors.length > 0) {
+      const errorCount = this.loadingErrors.length;
+      const hasStockError = this.loadingErrors.some(err => err.includes('Stock'));
+      const hasMemeError = this.loadingErrors.some(err => err.includes('Meme'));
+      
+      if (hasStockError && hasMemeError) {
+        this.toastNotification.showWarning(
+          'Unable to load both stock and meme data. Showing cached data if available.',
+          { duration: 6000 }
+        );
+      } else if (hasStockError) {
+        this.toastNotification.showWarning(
+          'Unable to load stock data. Showing meme data only.',
+          { duration: 5000 }
+        );
+      } else if (hasMemeError) {
+        this.toastNotification.showWarning(
+          'Unable to load meme data. Showing stock data only.',
+          { duration: 5000 }
+        );
+      }
+    }
+  }
+
+  /**
+   * Log network performance for monitoring
+   * @private
+   * @param {number} duration - Fetch duration in milliseconds
+   * @param {boolean} stockSuccess - Whether stock fetch succeeded
+   * @param {boolean} memeSuccess - Whether meme fetch succeeded
+   */
+  _logNetworkPerformance(duration, stockSuccess, memeSuccess) {
+    const performance = {
+      duration,
+      stockSuccess,
+      memeSuccess,
+      quality: duration < 3000 ? 'fast' : duration < 8000 ? 'moderate' : 'slow'
+    };
+    
+    console.log('Network Performance:', performance);
+    
+    // Show performance feedback to user for very slow connections
+    if (duration > 10000) {
+      this.toastNotification.showInfo(
+        'Slow network detected. Consider using a faster connection for better experience.',
+        { duration: 5000 }
+      );
+    }
+  }
+
+  /**
+   * Update data source information in footer
+   * @private
+   * @param {string} type - Type of data: 'real', 'sample', or 'partial'
+   */
+  _updateDataSourceInfo(type) {
+    const infoElement = document.getElementById('data-source-info');
+    if (!infoElement) return;
+    
+    switch (type) {
+      case 'sample':
+        infoElement.innerHTML = '⚠️ Using sample data for demonstration (APIs unavailable)';
+        infoElement.className = 'text-yellow-400 text-sm';
+        break;
+      case 'partial':
+        infoElement.innerHTML = '⚠️ Using mixed real and sample data (some APIs unavailable)';
+        infoElement.className = 'text-yellow-400 text-sm';
+        break;
+      default:
+        infoElement.innerHTML = 'Data sources: Yahoo Finance, Reddit API';
+        infoElement.className = 'text-slate-400 text-sm';
+    }
+  }
+
+  /**
+   * Get user-friendly error message
+   * @private
+   * @param {Error} error - Error object
+   * @param {string} context - Context description
+   * @returns {string} User-friendly message
+   */
+  _getUserFriendlyErrorMessage(error, context) {
+    const errorMessage = error.message.toLowerCase();
+    
+    if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
+      return 'Unable to connect to the server. Please check your internet connection.';
+    }
+    
+    if (errorMessage.includes('timeout')) {
+      return 'The request took too long to complete. Please try again.';
+    }
+    
+    if (errorMessage.includes('rate limit') || errorMessage.includes('429')) {
+      return 'Too many requests. Please wait a moment before trying again.';
+    }
+    
+    if (errorMessage.includes('not found') || errorMessage.includes('404')) {
+      return 'The requested data could not be found.';
+    }
+    
+    if (errorMessage.includes('unauthorized') || errorMessage.includes('401')) {
+      return 'Access denied. Please check your credentials.';
+    }
+    
+    if (errorMessage.includes('parse') || errorMessage.includes('json')) {
+      return 'Received invalid data from the server.';
+    }
+    
+    if (context.includes('Chart') || context.includes('chart')) {
+      return 'Unable to display the chart. This might be due to insufficient data.';
+    }
+    
+    if (context.includes('API') || context.includes('fetch') || context.includes('data')) {
+      return 'Unable to load data from the server.';
+    }
+    
+    if (context.includes('initialize')) {
+      return 'Failed to start the dashboard. Please refresh the page.';
+    }
+    
+    // Generic fallback message
+    return 'An unexpected error occurred. Please try again.';
   }
 
   /**
    * Destroy the dashboard and clean up resources
    */
   destroy() {
+    // Clean up event listeners
+    if (this._debouncedResize) {
+      window.removeEventListener('resize', this._debouncedResize);
+      this._debouncedResize = null;
+    }
+    
+    // Clean up error boundary
+    if (this.errorBoundary) {
+      this.errorBoundary.destroy();
+    }
+    
     // Clean up components
     if (this.chart) {
       this.chart.destroy();
+    }
+    
+    if (this.timeRangeFilter) {
+      this.timeRangeFilter.destroy();
     }
     
     // Clear container
