@@ -1,0 +1,145 @@
+@import "tailwindcss";
+
+/* Custom component styles */
+.panel {
+  @apply bg-slate-800 dark:bg-slate-800 rounded-lg shadow-xl p-6 border border-slate-700 dark:border-slate-600;
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+}
+
+.panel:hover {
+  @apply shadow-xl transform translate-y-[-2px];
+}
+
+.panel-header {
+  @apply text-xl font-semibold mb-4 text-blue-400 dark:text-blue-300;
+}
+
+.metric-value {
+  @apply text-3xl font-bold text-slate-100 dark:text-slate-50;
+}
+
+.metric-label {
+  @apply text-sm text-slate-400 dark:text-slate-400 uppercase tracking-wide font-medium;
+}
+
+/* Responsive utilities */
+.container-responsive {
+  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+}
+
+/* Touch-friendly spacing for mobile */
+@media (max-width: 767px) {
+  .panel {
+    @apply p-4;
+  }
+  
+  .panel-header {
+    @apply text-lg mb-3;
+  }
+  
+  .metric-value {
+    @apply text-2xl;
+  }
+  
+  /* Ensure minimum touch target size */
+  button, .clickable {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Desktop enhancements */
+@media (min-width: 768px) {
+  .panel {
+    @apply p-6;
+  }
+}
+
+/* Large desktop optimizations */
+@media (min-width: 1920px) {
+  .container-responsive {
+    @apply max-w-screen-2xl;
+  }
+}
+
+/* Header gradient styles */
+.header-gradient {
+  background: linear-gradient(135deg, #1e293b 0%, #334155 50%, #475569 100%);
+}
+
+/* Time range filter styles */
+.time-range-btn {
+  @apply px-4 py-2 rounded-md text-sm font-medium transition-all duration-200;
+  @apply text-slate-300 hover:text-slate-100 hover:bg-slate-700;
+  min-height: 44px; /* Touch-friendly */
+}
+
+.time-range-btn.active {
+  @apply bg-blue-600 text-white shadow-md;
+}
+
+/* Chart container responsive styles */
+.chart-container {
+  @apply relative w-full;
+  height: 400px;
+}
+
+@media (max-width: 767px) {
+  .chart-container {
+    height: 300px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .chart-container {
+    height: 500px;
+  }
+}
+
+/* Loading state styles */
+.loading-spinner {
+  @apply inline-block w-6 h-6 border-2 border-slate-300 border-t-blue-500 rounded-full animate-spin;
+}
+
+/* Ensure animate-spin is available for tests */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Error message styles */
+.error-message {
+  @apply bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded-lg;
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Focus styles for keyboard navigation */
+button:focus,
+.clickable:focus {
+  @apply outline-none ring-2 ring-blue-500 ring-offset-2 ring-offset-slate-900;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .panel {
+    @apply border-2 border-slate-400;
+  }
+  
+  .panel-header {
+    @apply text-blue-300;
+  }
+}
